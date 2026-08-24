@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
-import api from "@/api/api";
-import type { Destino, DestinoRequest } from "@/api/types";
+import api from "#/api/api";
+import type { Destino, DestinoRequest } from "#/api/types";
 
 export const destinosKey = ["destinos"];
 
