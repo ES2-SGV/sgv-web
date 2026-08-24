@@ -1,20 +1,24 @@
-import { RouterProvider } from '@tanstack/react-router'
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+import { RouterProvider } from "@tanstack/react-router";
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { getRouter } from "./router";
+import "./styles.css";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-import { getRouter } from './router'
-import './styles.css'
-
-const router = getRouter()
-
-const rootElement = document.getElementById('root')
+const router = getRouter();
+const queryClient = new QueryClient();
+const rootElement = document.getElementById("root");
 
 if (!rootElement) {
-  throw new Error('Root element #root not found in index.html')
+	throw new Error("Root element #root not found in index.html");
 }
 
 createRoot(rootElement).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-)
+	<StrictMode>
+		<QueryClientProvider client={queryClient}>
+			<RouterProvider router={router} />
+			<ReactQueryDevtools />
+		</QueryClientProvider>
+	</StrictMode>,
+);
