@@ -10,7 +10,7 @@ export const Route = createFileRoute("/despesas")({
 
 /**
  * Stub do controle financeiro. Depende de endpoints de despesa que ainda não
- * existem na sgv-api — nada foi cabeado aqui de propósito.
+ * existem na sgv-api
  */
 function DespesasPage() {
 	return (
@@ -22,7 +22,7 @@ function DespesasPage() {
 			<EmptyState
 				icon={Receipt}
 				titulo="Aguardando a API"
-				descricao="O backend ainda não expõe endpoints de despesa. Assim que existirem, os hooks entram em #/api/hooks/use-despesas."
+				descricao="O backend ainda não expõe endpoints de despesa. Futuro #/api/hooks/use-despesas."
 			/>
 		</>
 	);
