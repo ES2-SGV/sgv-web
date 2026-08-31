@@ -3,8 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-ARG VITE_API_BASEURL=http://localhost:8081
-ENV VITE_API_BASEURL=$VITE_API_BASEURL
+# npm run build usa a URL de produção. O .env está no .dockerignore, então o
+# valor tem que vir por build arg (o compose passa o dele).
+ARG VITE_PROD_API_BASEURL=http://localhost:8081
+ENV VITE_PROD_API_BASEURL=$VITE_PROD_API_BASEURL
 RUN npm run build
 
 FROM nginx:alpine

@@ -1,11 +1,19 @@
 import axios, { type AxiosError } from "axios";
 
 /**
- * Cliente HTTP único da aplicação. A base URL vem do build (VITE_API_BASEURL),
- * definida no dockerfile/compose — nunca escreva URLs absolutas nos hooks.
+ * Cliente HTTP único da aplicação — nunca escreva URLs absolutas nos hooks.
+ *
+ * A base URL depende do modo do Vite, não de onde a app está rodando:
+ * `npm run dev` usa a de desenvolvimento; `npm run build` (o que roda no
+ * dockerfile) usa a de produção. As duas ficam no `.env`, e o valor é embutido
+ * no bundle em tempo de build — mudou a URL, precisa buildar de novo.
  */
+const baseURL = import.meta.env.PROD
+	? (import.meta.env.VITE_PROD_API_BASEURL ?? "http://localhost:8081")
+	: (import.meta.env.VITE_DEV_API_BASEURL ?? "http://localhost:8080");
+
 export const api = axios.create({
-	baseURL: import.meta.env.VITE_API_BASEURL ?? "http://localhost:8080",
+	baseURL,
 	timeout: 20_000,
 });
 
