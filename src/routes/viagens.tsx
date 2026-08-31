@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Plane, Plus } from "lucide-react";
 import { useState } from "react";
+import type { Viagem } from "#/api/types";
 import { EmptyState } from "#/components/common/state-views";
 import { PageHeader } from "#/components/layout/page-header";
 import { Button } from "#/components/ui/button";
@@ -12,9 +13,13 @@ export const Route = createFileRoute("/viagens")({
 });
 
 function ViagensPage() {
+	const [emEdicao, setEmEdicao] = useState<Viagem | null>(null);
 	const [dialogAberto, setDialogAberto] = useState(false);
 
-	const abrirCriacao = () => setDialogAberto(true);
+	const abrirCriacao = () => {
+		setEmEdicao(null);
+		setDialogAberto(true);
+	};
 
 	return (
 		<>
@@ -41,7 +46,12 @@ function ViagensPage() {
 				}
 			/>
 
-			<ViagemFormDialog aberto={dialogAberto} onOpenChange={setDialogAberto} />
+			<ViagemFormDialog
+				key={emEdicao?.id ?? "nova"}
+				aberto={dialogAberto}
+				onOpenChange={setDialogAberto}
+				viagem={emEdicao}
+			/>
 		</>
 	);
 }

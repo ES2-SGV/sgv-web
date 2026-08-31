@@ -92,3 +92,11 @@ export const MEIO_TRANSPORTE_LABEL: Record<MeioTransporte, string> = {
 	VEICULO_PROPRIO: "Veículo próprio",
 	OUTRO: "Outro",
 };
+
+/**
+ * Regra da especificação: a viagem só pode ser alterada ou excluída enquanto
+ * não tiver sido analisada por um gestor.
+ */
+export function podeEditarViagem(situacao: SituacaoViagem): boolean {
+	return situacao === "RASCUNHO" || situacao === "SOLICITADA";
+}

@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import * as z from "zod";
 import { useColaboradores } from "#/api/hooks/use-colaboradores";
 import { useDestinos } from "#/api/hooks/use-destinos";
-import { useCreateViagem } from "#/api/hooks/use-viagens";
+import { useCreateViagem, useUpdateViagem } from "#/api/hooks/use-viagens";
 import {
 	MEIO_TRANSPORTE_LABEL,
 	MEIOS_TRANSPORTE,
 	type MeioTransporte,
+	podeEditarViagem,
+	type Viagem,
 	type ViagemRequest,
 } from "#/api/types";
 import { DateField } from "#/components/common/date-field";
@@ -62,7 +64,20 @@ const viagemSchema = z
 
 export type ViagemFormValues = z.infer<typeof viagemSchema>;
 
-function valoresIniciais(colaboradorDaSessao: number | null): ViagemFormValues {
+function valoresIniciais(
+	viagem: Viagem | null,
+	colaboradorDaSessao: number | null,
+): ViagemFormValues {
+	if (viagem) {
+		return {
+			destinoId: String(viagem.destino.id),
+			colaboradorId: String(viagem.colaborador.id),
+			motivo: viagem.motivo,
+			dataSaida: viagem.dataSaida,
+			dataRetorno: viagem.dataRetorno,
+			meioTransporte: viagem.meioTransporte,
+		};
+	}
 	return {
 		destinoId: "",
 		colaboradorId: colaboradorDaSessao ? String(colaboradorDaSessao) : "",
@@ -76,23 +91,37 @@ function valoresIniciais(colaboradorDaSessao: number | null): ViagemFormValues {
 interface ViagemFormDialogProps {
 	aberto: boolean;
 	onOpenChange: (aberto: boolean) => void;
+	/** Ausente ou null abre em modo de criação; preenchido abre em edição. */
+	viagem?: Viagem | null;
 }
 
-/** Formulário de cadastro de viagem. */
+/**
+ * Formulário de viagem usado tanto no cadastro quanto na edição. O modo sai do
+ * prop `viagem`: ele decide os valores iniciais, o texto dos rótulos e qual
+ * mutação roda no submit.
+ *
+ * O componente guarda o estado do formulário, então quem o usa deve remontá-lo
+ * ao trocar de registro (`key={viagem?.id ?? "nova"}`), como em routes/viagens.tsx.
+ */
 export function ViagemFormDialog({
 	aberto,
 	onOpenChange,
+	viagem = null,
 }: ViagemFormDialogProps) {
+	const editando = viagem !== null;
+	const somenteLeitura = editando && !podeEditarViagem(viagem.situacao);
+
 	const { colaboradorId: colaboradorDaSessao } = useSession();
 	const { data: destinos = [], isLoading: carregandoDestinos } = useDestinos();
 	const { data: colaboradores = [], isLoading: carregandoColaboradores } =
 		useColaboradores();
 
 	const criar = useCreateViagem();
+	const atualizar = useUpdateViagem();
 
 	const form = useForm<ViagemFormValues>({
 		resolver: zodResolver(viagemSchema),
-		defaultValues: valoresIniciais(colaboradorDaSessao),
+		defaultValues: valoresIniciais(viagem, colaboradorDaSessao),
 	});
 
 	const dataSaida = form.watch("dataSaida");
@@ -111,27 +140,49 @@ export function ViagemFormDialog({
 			meioTransporte: valores.meioTransporte,
 		};
 
-		criar.mutate(payload, {
+		const opcoes = {
 			onSuccess: () => {
-				toast.success("Viagem cadastrada como rascunho.");
+				toast.success(
+					editando ? "Viagem atualizada." : "Viagem cadastrada como rascunho.",
+				);
 				onOpenChange(false);
 			},
 			onError: (erro: unknown) => aplicarErrosDaApi(form, erro),
-		});
+		};
+
+		if (viagem) {
+			atualizar.mutate({ id: viagem.id, payload }, opcoes);
+		} else {
+			criar.mutate(payload, opcoes);
+		}
 	});
 
-	const salvando = criar.isPending;
-	const camposBloqueados = salvando;
+	const salvando = criar.isPending || atualizar.isPending;
+	const camposBloqueados = somenteLeitura || salvando;
 
 	return (
 		<Dialog open={aberto} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-2xl">
 				<DialogHeader>
-					<DialogTitle>Nova viagem</DialogTitle>
+					<DialogTitle>
+						{editando ? `Editar viagem #${viagem.id}` : "Nova viagem"}
+					</DialogTitle>
 					<DialogDescription>
-						A viagem é criada como rascunho e pode ser submetida depois.
+						{editando
+							? "Ajuste o planejamento da viagem."
+							: "A viagem é criada como rascunho e pode ser submetida depois."}
 					</DialogDescription>
 				</DialogHeader>
+
+				{somenteLeitura && (
+					<Alert>
+						<AlertCircle className="size-4" />
+						<AlertTitle>Viagem já analisada</AlertTitle>
+						<AlertDescription>
+							Só é possível alterar viagens em rascunho ou solicitadas.
+						</AlertDescription>
+					</Alert>
+				)}
 
 				{semCadastrosBasicos && (
 					<Alert>
@@ -213,9 +264,11 @@ export function ViagemFormDialog({
 												))}
 											</SelectContent>
 										</Select>
-										<FormDescription>
-											Vem da sessão atual, mas pode ser trocado.
-										</FormDescription>
+										{!editando && (
+											<FormDescription>
+												Vem da sessão atual, mas pode ser trocado.
+											</FormDescription>
+										)}
 										<FormMessage />
 									</FormItem>
 								)}
@@ -327,11 +380,20 @@ export function ViagemFormDialog({
 								variant="outline"
 								onClick={() => onOpenChange(false)}
 							>
-								Cancelar
+								{somenteLeitura ? "Fechar" : "Cancelar"}
 							</Button>
-							<Button type="submit" disabled={salvando || semCadastrosBasicos}>
-								{salvando ? "Salvando..." : "Cadastrar viagem"}
-							</Button>
+							{!somenteLeitura && (
+								<Button
+									type="submit"
+									disabled={salvando || semCadastrosBasicos}
+								>
+									{salvando
+										? "Salvando..."
+										: editando
+											? "Salvar alterações"
+											: "Cadastrar viagem"}
+								</Button>
+							)}
 						</DialogFooter>
 					</form>
 				</Form>
