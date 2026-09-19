@@ -1,32 +1,36 @@
 import * as React from "react";
 import { useColaboradores } from "#/api/hooks/use-colaboradores";
-import type { Colaborador } from "#/api/types";
+import type { Cargo, Colaborador } from "#/api/types";
+import { STORAGE_KEY_COLABORADOR } from "#/lib/storage-keys";
 
 /**
  * A API ainda não tem autenticação, mas a especificação exige um responsável
  * por viagem e um gestor que aprova. Enquanto o login não existe, a "sessão" é
  * um colaborador escolhido no menu lateral e guardado no localStorage.
  *
+ * Mudança em relação à versão anterior: o papel (Colaborador/Gestor) deixou
+ * de ser escolhido manualmente e agora vem do campo `cargo` do colaborador
+ * selecionado — como o backend passou a modelar cargo de verdade, manter um
+ * toggle solto permitiria simular um "Gestor" que na prática é um
+ * Colaborador no cadastro, o que não faz mais sentido.
+ *
  * Quando o login real entrar, só o corpo deste arquivo muda — as telas
  * continuam consumindo `useSession()`.
  */
 
-export type Papel = "COLABORADOR" | "GESTOR";
-
-const STORAGE_KEY_COLABORADOR = "sgv:colaboradorId";
-const STORAGE_KEY_PAPEL = "sgv:papel";
+export type Papel = Cargo;
 
 interface SessionContextValue {
 	/** Colaborador logado, ou undefined enquanto carrega / nenhum escolhido. */
 	colaborador: Colaborador | undefined;
 	colaboradorId: number | null;
+	/** Deriva do `cargo` do colaborador selecionado. */
 	papel: Papel;
 	isGestor: boolean;
 	/** Lista para o seletor de sessão do menu lateral. */
 	colaboradores: Colaborador[];
 	isLoading: boolean;
 	entrarComo: (colaboradorId: number) => void;
-	setPapel: (papel: Papel) => void;
 	sair: () => void;
 }
 
@@ -42,11 +46,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 	const [colaboradorId, setColaboradorId] = React.useState<number | null>(
 		lerColaboradorSalvo,
 	);
-	const [papel, setPapelState] = React.useState<Papel>(
-		() =>
-			(localStorage.getItem(STORAGE_KEY_PAPEL) as Papel | null) ??
-			"COLABORADOR",
-	);
 
 	// Se ninguém foi escolhido ainda (ou o escolhido foi excluído), assume o primeiro.
 	React.useEffect(() => {
@@ -60,8 +59,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 	}, [colaboradores, colaboradorId]);
 
 	const value = React.useMemo<SessionContextValue>(() => {
+		const colaborador = colaboradores.find((c) => c.id === colaboradorId);
+		const papel: Papel = colaborador?.cargo ?? "COLABORADOR";
 		return {
-			colaborador: colaboradores.find((c) => c.id === colaboradorId),
+			colaborador,
 			colaboradorId,
 			papel,
 			isGestor: papel === "GESTOR",
@@ -71,16 +72,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 				localStorage.setItem(STORAGE_KEY_COLABORADOR, String(id));
 				setColaboradorId(id);
 			},
-			setPapel: (next) => {
-				localStorage.setItem(STORAGE_KEY_PAPEL, next);
-				setPapelState(next);
-			},
 			sair: () => {
 				localStorage.removeItem(STORAGE_KEY_COLABORADOR);
 				setColaboradorId(null);
 			},
 		};
-	}, [colaboradores, colaboradorId, papel, isLoading]);
+	}, [colaboradores, colaboradorId, isLoading]);
 
 	return <SessionContext value={value}>{children}</SessionContext>;
 }

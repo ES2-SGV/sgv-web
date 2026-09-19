@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute } from "@tanstack/react-router";
-import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { History, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
+import { useAreas } from "#/api/hooks/use-areas";
 import { getErrorMessage } from "#/api/client";
 import {
 	useColaboradores,
@@ -12,7 +13,12 @@ import {
 	useDeleteColaborador,
 	useUpdateColaborador,
 } from "#/api/hooks/use-colaboradores";
-import type { Colaborador } from "#/api/types";
+import {
+	CARGO_LABEL,
+	CARGOS,
+	type Colaborador,
+	MATRICULA_REGEX,
+} from "#/api/types";
 import { ConfirmDialog } from "#/components/common/confirm-dialog";
 import {
 	EmptyState,
@@ -42,6 +48,13 @@ import {
 } from "#/components/ui/form";
 import { Input } from "#/components/ui/input";
 import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#/components/ui/select";
+import {
 	Table,
 	TableBody,
 	TableCell,
@@ -49,6 +62,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { LotacaoColaboradorSheet } from "#/components/colaboradores/lotacao-colaborador-sheet";
 import { aplicarErrosDaApi } from "#/lib/form";
 import { useSession } from "#/lib/session";
 
@@ -58,9 +72,14 @@ export const Route = createFileRoute("/colaboradores")({
 });
 
 const colaboradorSchema = z.object({
-	matricula: z.string().trim().min(1, "Matrícula é obrigatória"),
+	matricula: z
+		.string()
+		.trim()
+		.min(1, "Matrícula é obrigatória")
+		.regex(MATRICULA_REGEX, "Formato inválido. Use XXXX-X (ex: 0001-1)"),
 	nome: z.string().trim().min(1, "Nome é obrigatório"),
-	area: z.string().trim().min(1, "Área é obrigatória"),
+	areaId: z.string().min(1, "Área é obrigatória"),
+	cargo: z.enum(CARGOS, { message: "Cargo é obrigatório" }),
 });
 
 type ColaboradorFormValues = z.infer<typeof colaboradorSchema>;
@@ -68,7 +87,8 @@ type ColaboradorFormValues = z.infer<typeof colaboradorSchema>;
 const VALORES_VAZIOS: ColaboradorFormValues = {
 	matricula: "",
 	nome: "",
-	area: "",
+	areaId: "",
+	cargo: "" as ColaboradorFormValues["cargo"],
 };
 
 function ColaboradoresPage() {
@@ -83,6 +103,7 @@ function ColaboradoresPage() {
 	const remover = useDeleteColaborador();
 	const [emEdicao, setEmEdicao] = useState<Colaborador | null>(null);
 	const [dialogAberto, setDialogAberto] = useState(false);
+	const [historicoDe, setHistoricoDe] = useState<Colaborador | null>(null);
 
 	const abrirCriacao = () => {
 		setEmEdicao(null);
@@ -137,12 +158,13 @@ function ColaboradoresPage() {
 										<TableHead className="w-32">Matrícula</TableHead>
 										<TableHead>Nome</TableHead>
 										<TableHead>Área</TableHead>
-										<TableHead className="w-28" />
+										<TableHead>Cargo</TableHead>
+										<TableHead className="w-32" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{isLoading ? (
-										<TableSkeleton colunas={4} />
+										<TableSkeleton colunas={5} />
 									) : (
 										colaboradores.map((colaborador) => (
 											<TableRow key={colaborador.id}>
@@ -157,9 +179,28 @@ function ColaboradoresPage() {
 														)}
 													</span>
 												</TableCell>
-												<TableCell>{colaborador.area}</TableCell>
+												<TableCell>{colaborador.area.nome}</TableCell>
+												<TableCell>
+													<Badge
+														variant={
+															colaborador.cargo === "GESTOR"
+																? "default"
+																: "outline"
+														}
+													>
+														{CARGO_LABEL[colaborador.cargo]}
+													</Badge>
+												</TableCell>
 												<TableCell>
 													<div className="flex justify-end gap-1">
+														<Button
+															variant="ghost"
+															size="icon"
+															aria-label="Histórico de lotação"
+															onClick={() => setHistoricoDe(colaborador)}
+														>
+															<History className="size-4" />
+														</Button>
 														<Button
 															variant="ghost"
 															size="icon"
@@ -201,6 +242,12 @@ function ColaboradoresPage() {
 				onOpenChange={setDialogAberto}
 				colaborador={emEdicao}
 			/>
+
+			<LotacaoColaboradorSheet
+				aberto={historicoDe !== null}
+				onOpenChange={(aberto) => !aberto && setHistoricoDe(null)}
+				colaborador={historicoDe}
+			/>
 		</>
 	);
 }
@@ -216,18 +263,28 @@ function ColaboradorDialog({
 }) {
 	const criar = useCreateColaborador();
 	const atualizar = useUpdateColaborador();
+	const { data: areas = [], isLoading: carregandoAreas } = useAreas();
+
 	const form = useForm<ColaboradorFormValues>({
 		resolver: zodResolver(colaboradorSchema),
 		defaultValues: colaborador
 			? {
 					matricula: colaborador.matricula,
 					nome: colaborador.nome,
-					area: colaborador.area,
+					areaId: String(colaborador.area.id),
+					cargo: colaborador.cargo,
 				}
 			: VALORES_VAZIOS,
 	});
 
 	const onSubmit = form.handleSubmit((valores) => {
+		const payload = {
+			matricula: valores.matricula,
+			nome: valores.nome,
+			areaId: Number(valores.areaId),
+			cargo: valores.cargo,
+		};
+
 		const opcoes = {
 			onSuccess: () => {
 				toast.success(
@@ -239,9 +296,9 @@ function ColaboradorDialog({
 		};
 
 		if (colaborador) {
-			atualizar.mutate({ id: colaborador.id, payload: valores }, opcoes);
+			atualizar.mutate({ id: colaborador.id, payload }, opcoes);
 		} else {
-			criar.mutate(valores, opcoes);
+			criar.mutate(payload, opcoes);
 		}
 	});
 
@@ -268,9 +325,12 @@ function ColaboradorDialog({
 								<FormItem>
 									<FormLabel>Matrícula</FormLabel>
 									<FormControl>
-										<Input placeholder="0001" {...field} />
+										<Input placeholder="0001-1" {...field} />
 									</FormControl>
-									<FormDescription>Única por colaborador.</FormDescription>
+									<FormDescription>
+										Formato XXXX-X (4 dígitos, hífen, 1 dígito). Única por
+										colaborador.
+									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -290,13 +350,56 @@ function ColaboradorDialog({
 						/>
 						<FormField
 							control={form.control}
-							name="area"
+							name="areaId"
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Área</FormLabel>
-									<FormControl>
-										<Input placeholder="Comercial" {...field} />
-									</FormControl>
+									<Select
+										value={field.value}
+										onValueChange={field.onChange}
+										disabled={carregandoAreas}
+									>
+										<FormControl>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Selecione a área" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											{areas.map((area) => (
+												<SelectItem key={area.id} value={String(area.id)}>
+													{area.nome}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						<FormField
+							control={form.control}
+							name="cargo"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Cargo</FormLabel>
+									<Select value={field.value} onValueChange={field.onChange}>
+										<FormControl>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Selecione o cargo" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											{CARGOS.map((cargo) => (
+												<SelectItem key={cargo} value={cargo}>
+													{CARGO_LABEL[cargo]}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<FormDescription>
+										Gestor pode aprovar, rejeitar ou solicitar ajustes em
+										viagens.
+									</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}

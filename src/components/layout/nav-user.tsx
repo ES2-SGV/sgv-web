@@ -1,4 +1,4 @@
-import { ChevronsUpDown, LogOut, ShieldCheck, User } from "lucide-react";
+import { ChevronsUpDown, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -18,15 +18,16 @@ import {
 } from "#/components/ui/sidebar";
 import { Skeleton } from "#/components/ui/skeleton";
 import { iniciais } from "#/lib/format";
-import { type Papel, useSession } from "#/lib/session";
+import { useSession } from "#/lib/session";
 
 /**
- * Seletor de sessão: enquanto não há login, troca-se de colaborador e de papel
- * por aqui. O componente já tem o formato de um menu de usuário real.
+ * Seletor de sessão: enquanto não há login, troca-se de colaborador por aqui.
+ * O papel (Colaborador/Gestor) não é mais escolhido aqui — ele vem do campo
+ * `cargo` do colaborador selecionado (ver lib/session.tsx).
  */
 export function NavUser() {
 	const { isMobile } = useSidebar();
-	const { colaborador, colaboradores, isLoading, papel, entrarComo, setPapel } =
+	const { colaborador, colaboradores, isLoading, papel, entrarComo } =
 		useSession();
 
 	if (isLoading) {
@@ -65,7 +66,7 @@ export function NavUser() {
 								</span>
 								<span className="truncate text-xs text-muted-foreground">
 									{papel === "GESTOR" ? "Gestor" : "Colaborador"}
-									{colaborador ? ` · ${colaborador.area}` : ""}
+									{colaborador ? ` · ${colaborador.area.nome}` : ""}
 								</span>
 							</div>
 							<ChevronsUpDown className="ml-auto size-4" />
@@ -79,25 +80,7 @@ export function NavUser() {
 						sideOffset={4}
 					>
 						<DropdownMenuLabel className="text-muted-foreground text-xs">
-							Sessão simulada
-						</DropdownMenuLabel>
-						<DropdownMenuRadioGroup
-							value={papel}
-							onValueChange={(valor) => setPapel(valor as Papel)}
-						>
-							<DropdownMenuRadioItem value="COLABORADOR">
-								<User className="size-4" />
-								Colaborador
-							</DropdownMenuRadioItem>
-							<DropdownMenuRadioItem value="GESTOR">
-								<ShieldCheck className="size-4" />
-								Gestor
-							</DropdownMenuRadioItem>
-						</DropdownMenuRadioGroup>
-
-						<DropdownMenuSeparator />
-						<DropdownMenuLabel className="text-muted-foreground text-xs">
-							Entrar como
+							Sessão simulada — entrar como
 						</DropdownMenuLabel>
 						{colaboradores.length === 0 && (
 							<DropdownMenuItem disabled>

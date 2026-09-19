@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Eye, Pencil, Plane, Plus, Search, Trash2 } from "lucide-react";
+import { Eye, Plane, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "#/api/client";
 import { useDeleteViagem, useViagens } from "#/api/hooks/use-viagens";
 import {
 	MEIO_TRANSPORTE_LABEL,
-	podeEditarViagem,
+	podeExcluirViagem,
 	SITUACAO_LABEL,
 	SITUACOES_VIAGEM,
 	type SituacaoViagem,
@@ -38,6 +38,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
+import { ViagemDetalheDialog } from "#/components/viagens/viagem-detalhe-dialog";
 import { ViagemFormDialog } from "#/components/viagens/viagem-form-dialog";
 import { diffEmDias, formatDateRange } from "#/lib/format";
 
@@ -73,8 +74,14 @@ function ViagensPage() {
 	} = useViagens();
 	const remover = useDeleteViagem();
 
+	// Dialog de criação/edição do formulário (rascunho / em ajuste).
 	const [emEdicao, setEmEdicao] = useState<Viagem | null>(null);
-	const [dialogAberto, setDialogAberto] = useState(false);
+	const [formAberto, setFormAberto] = useState(false);
+
+	// Dialog de visualização + ações de transição (solicitar/cancelar/aprovar...).
+	const [emVisualizacao, setEmVisualizacao] = useState<Viagem | null>(null);
+	const [detalheAberto, setDetalheAberto] = useState(false);
+
 	const [busca, setBusca] = useState("");
 	const [situacao, setSituacao] = useState<SituacaoViagem | typeof TODAS>(
 		TODAS,
@@ -82,12 +89,19 @@ function ViagensPage() {
 
 	const abrirCriacao = () => {
 		setEmEdicao(null);
-		setDialogAberto(true);
+		setFormAberto(true);
 	};
 
-	const abrirViagem = (viagem: Viagem) => {
+	const abrirVisualizacao = (viagem: Viagem) => {
+		setEmVisualizacao(viagem);
+		setDetalheAberto(true);
+	};
+
+	/** Chamado pelo dialog de detalhe quando o usuário clica em "Editar". */
+	const abrirEdicaoAPartirDoDetalhe = (viagem: Viagem) => {
+		setDetalheAberto(false);
 		setEmEdicao(viagem);
-		setDialogAberto(true);
+		setFormAberto(true);
 	};
 
 	const excluir = (viagem: Viagem) =>
@@ -203,7 +217,7 @@ function ViagensPage() {
 										<TableHead>Período</TableHead>
 										<TableHead>Transporte</TableHead>
 										<TableHead>Situação</TableHead>
-										<TableHead className="w-28" />
+										<TableHead className="w-20" />
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -211,7 +225,7 @@ function ViagensPage() {
 										<TableSkeleton colunas={7} />
 									) : (
 										filtradas.map((viagem) => {
-											const editavel = podeEditarViagem(viagem.situacao);
+											const excluivel = podeExcluirViagem(viagem.situacao);
 											return (
 												<TableRow key={viagem.id}>
 													<TableCell className="text-muted-foreground tabular-nums">
@@ -226,7 +240,7 @@ function ViagensPage() {
 													<TableCell>
 														{viagem.colaborador.nome}
 														<span className="block text-muted-foreground text-xs">
-															{viagem.colaborador.area}
+															{viagem.colaborador.area.nome}
 														</span>
 													</TableCell>
 													<TableCell className="whitespace-nowrap">
@@ -250,16 +264,12 @@ function ViagensPage() {
 															<Button
 																variant="ghost"
 																size="icon"
-																aria-label={editavel ? "Editar" : "Visualizar"}
-																onClick={() => abrirViagem(viagem)}
+																aria-label="Ver viagem"
+																onClick={() => abrirVisualizacao(viagem)}
 															>
-																{editavel ? (
-																	<Pencil className="size-4" />
-																) : (
-																	<Eye className="size-4" />
-																)}
+																<Eye className="size-4" />
 															</Button>
-															{editavel && (
+															{excluivel && (
 																<ConfirmDialog
 																	titulo="Excluir viagem?"
 																	descricao={`A viagem #${viagem.id} para ${viagem.destino.nome} será removida permanentemente.`}
@@ -291,9 +301,16 @@ function ViagensPage() {
 
 			<ViagemFormDialog
 				key={emEdicao?.id ?? "nova"}
-				aberto={dialogAberto}
-				onOpenChange={setDialogAberto}
+				aberto={formAberto}
+				onOpenChange={setFormAberto}
 				viagem={emEdicao}
+			/>
+
+			<ViagemDetalheDialog
+				aberto={detalheAberto}
+				onOpenChange={setDetalheAberto}
+				viagem={emVisualizacao}
+				onEditar={abrirEdicaoAPartirDoDetalhe}
 			/>
 		</>
 	);

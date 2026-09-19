@@ -1,4 +1,5 @@
 import axios, { type AxiosError } from "axios";
+import { STORAGE_KEY_COLABORADOR } from "#/lib/storage-keys";
 
 /**
  * Cliente HTTP único da aplicação — nunca escreva URLs absolutas nos hooks.
@@ -15,6 +16,21 @@ const baseURL = import.meta.env.PROD
 export const api = axios.create({
 	baseURL,
 	timeout: 20_000,
+});
+
+/**
+ * Enquanto não existe login, toda transição de viagem (solicitar, cancelar,
+ * aprovar, rejeitar, ajustar) e também PUT/DELETE /viagens/{id} exigem o
+ * header X-Colaborador-Id — sem ele a API responde 400. O valor vem do
+ * seletor "sessão simulada" no rodapé da barra lateral (ver lib/session.tsx),
+ * guardado no localStorage.
+ */
+api.interceptors.request.use((config) => {
+	const id = localStorage.getItem(STORAGE_KEY_COLABORADOR);
+	if (id) {
+		config.headers["X-Colaborador-Id"] = id;
+	}
+	return config;
 });
 
 /** Formato de erro devolvido pelo GlobalExceptionHandler da API. */

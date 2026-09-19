@@ -179,8 +179,16 @@ export function ViagemFormDialog({
 						<AlertCircle className="size-4" />
 						<AlertTitle>Viagem já analisada</AlertTitle>
 						<AlertDescription>
-							Só é possível alterar viagens em rascunho ou solicitadas.
+							Só é possível alterar viagens em rascunho ou em ajuste.
 						</AlertDescription>
+					</Alert>
+				)}
+
+				{viagem && viagem.situacao === "EM_AJUSTE" && viagem.motivoAjuste && (
+					<Alert>
+						<AlertCircle className="size-4" />
+						<AlertTitle>O gestor pediu ajustes</AlertTitle>
+						<AlertDescription>{viagem.motivoAjuste}</AlertDescription>
 					</Alert>
 				)}
 
@@ -259,7 +267,7 @@ export function ViagemFormDialog({
 														key={colaborador.id}
 														value={String(colaborador.id)}
 													>
-														{colaborador.nome} — {colaborador.area}
+														{colaborador.nome} — {colaborador.area.nome}
 													</SelectItem>
 												))}
 											</SelectContent>

@@ -25,6 +25,16 @@ export function formatDateRange(inicio: string, fim: string): string {
 	return `${formatDate(inicio)} – ${formatDate(fim)}`;
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+	dateStyle: "short",
+	timeStyle: "short",
+});
+
+/** Para timestamps ISO completos (histórico de viagem, lotações), não LocalDate puro. */
+export function formatDateTime(iso: string | null | undefined): string {
+	return iso ? dateTimeFormatter.format(new Date(iso)) : "—";
+}
+
 /** Duração em dias, contando o dia de saída e o de retorno. */
 export function diffEmDias(inicio: string, fim: string): number {
 	const ms = parseIsoDate(fim).getTime() - parseIsoDate(inicio).getTime();
