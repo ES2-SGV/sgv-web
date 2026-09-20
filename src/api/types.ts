@@ -94,6 +94,12 @@ export interface Viagem {
 	 * o backend limpa automaticamente ao reenviar a viagem.
 	 */
 	motivoAjuste: string | null;
+	/**
+	 * Soma de todas as despesas lançadas, calculada pelo backend. Vem em
+	 * TODAS as rotas de viagem (list/detail/transições), não só quando há
+	 * despesas — é 0 quando ainda não há nenhuma.
+	 */
+	valorTotal: number;
 }
 
 export interface ViagemRequest {
@@ -134,6 +140,49 @@ export interface LotacaoColaboradorItem {
 	dataInicio: string;
 	/** ISO date — fim da vigência, ou null se ainda vigente. */
 	dataFim: string | null;
+}
+
+/* ----------------------------------- Despesa -------------------------------- */
+
+export const TIPOS_DESPESA = [
+	"HOSPEDAGEM",
+	"ALIMENTACAO",
+	"TRANSPORTE",
+	"COMBUSTIVEL",
+	"PEDAGIOS",
+	"OUTROS",
+] as const;
+
+export type TipoDespesa = (typeof TIPOS_DESPESA)[number];
+
+export const TIPO_DESPESA_LABEL: Record<TipoDespesa, string> = {
+	HOSPEDAGEM: "Hospedagem",
+	ALIMENTACAO: "Alimentação",
+	TRANSPORTE: "Transporte",
+	COMBUSTIVEL: "Combustível",
+	PEDAGIOS: "Pedágios",
+	OUTROS: "Outros",
+};
+
+export interface Despesa {
+	id: number;
+	/** ISO date (yyyy-MM-dd). */
+	dataDespesa: string;
+	tipoDespesa: TipoDespesa;
+	descricao: string;
+	valor: number;
+}
+
+export interface DespesaRequest {
+	dataDespesa: string;
+	tipoDespesa: TipoDespesa;
+	descricao: string;
+	valor: number;
+}
+
+/** Só pode lançar despesa com a viagem já aprovada. */
+export function podeRegistrarDespesa(situacao: SituacaoViagem): boolean {
+	return situacao === "APROVADA";
 }
 
 /* ----------------------------------- Rótulos -------------------------------- */

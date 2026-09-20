@@ -19,6 +19,8 @@ interface DateFieldProps {
 	disabled?: boolean;
 	/** Datas anteriores a esta ficam bloqueadas no calendário. */
 	minima?: string;
+	/** Datas posteriores a esta ficam bloqueadas no calendário (ex: hoje, para impedir data futura). */
+	maxima?: Date;
 	id?: string;
 }
 
@@ -28,10 +30,16 @@ export function DateField({
 	placeholder = "Selecione a data",
 	disabled = false,
 	minima,
+	maxima,
 	id,
 }: DateFieldProps) {
 	const [aberto, setAberto] = useState(false);
 	const selecionada = value ? parseIsoDate(value) : undefined;
+
+	const matchers = [
+		minima ? { before: parseIsoDate(minima) } : undefined,
+		maxima ? { after: maxima } : undefined,
+	].filter((matcher) => matcher !== undefined);
 
 	return (
 		<Popover open={aberto} onOpenChange={setAberto}>
@@ -58,7 +66,7 @@ export function DateField({
 					locale={ptBR}
 					selected={selecionada}
 					defaultMonth={selecionada}
-					disabled={minima ? { before: parseIsoDate(minima) } : undefined}
+					disabled={matchers.length > 0 ? matchers : undefined}
 					autoFocus
 					onSelect={(data) => {
 						onChange(data ? toIsoDate(data) : "");

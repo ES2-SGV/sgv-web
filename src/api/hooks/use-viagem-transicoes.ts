@@ -16,7 +16,7 @@ const ENDPOINT = {
 	cancelar: (id: number) => `/viagens/${id}/cancelar`,
 	aprovar: (id: number) => `/viagens/${id}/aprovar`,
 	rejeitar: (id: number) => `/viagens/${id}/rejeitar`,
-	solicitarAjuste: (id: number) => `/viagens/${id}/ajustes`,
+	solicitarAjuste: (id: number) => `/viagens/${id}/solicitar-ajuste`,
 } as const;
 
 function useInvalidateViagem(id: number) {
@@ -94,7 +94,7 @@ export function useSolicitarAjusteViagem(id: number) {
 	return useMutation<Viagem, ApiRequestError, string>({
 		mutationFn: async (motivoAjuste) => {
 			const { data } = await api.post<Viagem>(ENDPOINT.solicitarAjuste(id), {
-				motivo: motivoAjuste,
+				motivoAjuste,
 			});
 			return data;
 		},

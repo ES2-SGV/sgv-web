@@ -16,5 +16,6 @@ export const queryKeys = {
 		all: ["viagens"] as const,
 		detail: (id: number) => ["viagens", id] as const,
 		historico: (id: number) => ["viagens", id, "historico"] as const,
+		despesas: (id: number) => ["viagens", id, "despesas"] as const,
 	},
 };

@@ -1,4 +1,4 @@
-import { AlertCircle, History } from "lucide-react";
+import { AlertCircle, History, Receipt } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { getErrorMessage } from "#/api/client";
@@ -16,6 +16,7 @@ import {
 	podeEditarViagem,
 	podeExcluirViagem,
 	podeGestorAgir,
+	podeRegistrarDespesa,
 	podeSolicitarViagem,
 	type Viagem,
 } from "#/api/types";
@@ -32,8 +33,9 @@ import {
 	DialogTitle,
 } from "#/components/ui/dialog";
 import { Separator } from "#/components/ui/separator";
-import { diffEmDias, formatDateRange } from "#/lib/format";
+import { diffEmDias, formatCurrency, formatDateRange } from "#/lib/format";
 import { useSession } from "#/lib/session";
+import { DespesasViagemSheet } from "#/components/viagens/despesas-viagem-sheet";
 import { MotivoDialog } from "#/components/viagens/motivo-dialog";
 import { ViagemHistoricoSheet } from "#/components/viagens/viagem-historico-sheet";
 
@@ -68,6 +70,7 @@ export function ViagemDetalheDialog({
 }: ViagemDetalheDialogProps) {
 	const { colaboradorId, isGestor } = useSession();
 	const [historicoAberto, setHistoricoAberto] = useState(false);
+	const [despesasAberto, setDespesasAberto] = useState(false);
 	const [dialogRejeitar, setDialogRejeitar] = useState(false);
 	const [dialogAjuste, setDialogAjuste] = useState(false);
 
@@ -164,20 +167,38 @@ export function ViagemDetalheDialog({
 							valor={MEIO_TRANSPORTE_LABEL[viagem.meioTransporte]}
 						/>
 						<Campo label="Motivo" valor={viagem.motivo} />
+						<Campo
+							label="Custo total"
+							valor={formatCurrency(viagem.valorTotal)}
+						/>
 					</div>
 
 					<Separator />
 
 					<div className="flex flex-wrap items-center justify-between gap-2">
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={() => setHistoricoAberto(true)}
-						>
-							<History className="size-4" />
-							Ver histórico
-						</Button>
+						<div className="flex flex-wrap gap-1">
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onClick={() => setHistoricoAberto(true)}
+							>
+								<History className="size-4" />
+								Ver histórico
+							</Button>
+							{(podeRegistrarDespesa(viagem.situacao) ||
+								viagem.valorTotal > 0) && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => setDespesasAberto(true)}
+								>
+									<Receipt className="size-4" />
+									Despesas
+								</Button>
+							)}
+						</div>
 
 						<div className="flex flex-wrap justify-end gap-2">
 							{/* Ações do solicitante */}
@@ -290,6 +311,12 @@ export function ViagemDetalheDialog({
 				aberto={historicoAberto}
 				onOpenChange={setHistoricoAberto}
 				viagemId={viagem.id}
+			/>
+
+			<DespesasViagemSheet
+				aberto={despesasAberto}
+				onOpenChange={setDespesasAberto}
+				viagem={viagem}
 			/>
 
 			<MotivoDialog
