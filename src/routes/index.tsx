@@ -23,7 +23,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "#/components/ui/table";
-import { formatDateRange } from "#/lib/format";
+import { formatDateRange, formatCurrency } from "#/lib/format";
 
 export const Route = createFileRoute("/")({
 	component: Dashboard,
@@ -57,12 +57,24 @@ function Dashboard() {
 	} = useViagens();
 
 	const indicadores = useMemo(
-		() => ({
-			total: viagens.length,
-			aprovadas: viagens.filter((v) => v.situacao === "APROVADA").length,
-			rejeitadas: viagens.filter((v) => v.situacao === "REJEITADA").length,
-			destinoTop: destinoMaisVisitado(viagens),
-		}),
+		() => {
+			const total = viagens.length;
+			const aprovadas = viagens.filter((v) => v.situacao === "APROVADA").length;
+			const rejeitadas = viagens.filter((v) => v.situacao === "REJEITADA").length;
+			const destinoTop = destinoMaisVisitado(viagens);
+			
+			const valorTotalGasto = viagens.reduce((acc, v) => acc + (v.valorTotal || 0), 0);
+			const custoMedio = total > 0 ? valorTotalGasto / total : 0;
+
+			return {
+				total,
+				aprovadas,
+				rejeitadas,
+				destinoTop,
+				valorTotalGasto,
+				custoMedio,
+			};
+		},
 		[viagens],
 	);
 
@@ -110,15 +122,17 @@ function Dashboard() {
 			<div className="grid gap-4 sm:grid-cols-2">
 				<StatCard
 					titulo="Valor total gasto"
-					valor="—"
-					descricao="Aguardando o endpoint de despesas na API."
+					valor={formatCurrency(indicadores.valorTotalGasto)}
+					descricao="Soma de todas as despesas lançadas."
 					icon={Wallet}
+					isLoading={isLoading}
 				/>
 				<StatCard
 					titulo="Custo médio por viagem"
-					valor="—"
-					descricao="Aguardando o endpoint de despesas na API."
+					valor={formatCurrency(indicadores.custoMedio)}
+					descricao="Média de gastos considerando todas as viagens."
 					icon={Wallet}
+					isLoading={isLoading}
 				/>
 			</div>
 
